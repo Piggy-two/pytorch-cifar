@@ -664,10 +664,17 @@ Saved best checkpoint to checkpoint\digits_lenet_best.pth (acc=86.11%)
 & "D:\anaconda3\Scripts\conda.exe" run -n dlgpu python main.py --train-subset 500 --test-subset 200 --epochs 3
 ```
 
-### 20.6 网络稳定后尝试 CIFAR-10
+### 20.6 离线数据准备好后尝试 CIFAR-10
 
 ```powershell
-& "D:\anaconda3\Scripts\conda.exe" run -n dlgpu python main.py --dataset CIFAR10 --model ResNet18 --optimizer sgd --lr 0.1 --epochs 20
+& "D:\anaconda3\Scripts\conda.exe" run -n dlgpu python main.py --dataset CIFAR10 --model ResNet18 --optimizer sgd --lr 0.1 --epochs 20 --no-download
+```
+
+当前程序也支持手动下载后的 `MNIST` 和 `FashionMNIST`。如果只是确认数据能否被读取，可以先跑小子集：
+
+```powershell
+& "D:\anaconda3\Scripts\conda.exe" run -n dlgpu python main.py --dataset MNIST --model LeNet --epochs 1 --train-subset 64 --test-subset 32 --batch-size 32 --workers 0 --no-download
+& "D:\anaconda3\Scripts\conda.exe" run -n dlgpu python main.py --dataset FashionMNIST --model LeNet --epochs 1 --train-subset 64 --test-subset 32 --batch-size 32 --workers 0 --no-download
 ```
 
 ## 21. 你应该怎样改代码练习
@@ -681,6 +688,7 @@ Saved best checkpoint to checkpoint\digits_lenet_best.pth (acc=86.11%)
 5. 尝试切换 `--optimizer adam` 和 `--optimizer sgd`。
 6. 尝试 `--model ResNet18`，比较更深模型在小数据集上的表现。
 7. 尝试 CIFAR-10，理解彩色自然图片比手写数字更难。
+8. 尝试 MNIST 和 FashionMNIST，比较同样是 10 类分类时，不同图像来源对训练难度的影响。
 
 打印 shape 的例子：
 

@@ -84,10 +84,10 @@ optimizer.step()
 & "D:\anaconda3\Scripts\conda.exe" run -n dlgpu python main.py --train-subset 500 --test-subset 200 --epochs 3
 ```
 
-网络稳定后尝试原项目的 CIFAR-10：
+离线数据准备好后尝试原项目的 CIFAR-10：
 
 ```powershell
-& "D:\anaconda3\Scripts\conda.exe" run -n dlgpu python main.py --dataset CIFAR10 --model ResNet18 --optimizer sgd --lr 0.1 --epochs 20
+& "D:\anaconda3\Scripts\conda.exe" run -n dlgpu python main.py --dataset CIFAR10 --model ResNet18 --optimizer sgd --lr 0.1 --epochs 20 --no-download
 ```
 
 ## 4. 重要参数
@@ -132,7 +132,30 @@ checkpoint/
 
 默认 `Digits` 数据集不需要下载，适合优先学习 PyTorch 训练流程。
 
-`CIFAR10`、`MNIST`、`FashionMNIST` 仍然保留在程序里，但需要从网络下载。之前当前环境下载 CIFAR-10/MNIST 时出现过压缩包校验失败，所以默认没有依赖它们。
+`CIFAR10`、`MNIST`、`FashionMNIST` 仍然保留在程序里。因为当前环境曾经出现过压缩包校验失败，建议手动下载后用 `--no-download` 离线运行。
+
+本地数据默认放在 `data/` 下，当前程序支持下面几种常见手动解压结构：
+
+```text
+data/
+  cifar-10-batches-py/                         # CIFAR-10 标准结构
+  cifar-10-python/cifar-10-batches-py/         # 兼容多解压出一层目录的结构
+  MNIST/raw/
+    train-images-idx3-ubyte                    # torchvision 默认文件名
+    train-images.idx3-ubyte                    # 兼容官方 gzip 解压出的点号文件名
+  FashionMNIST/raw/
+    train-images-idx3-ubyte
+```
+
+已经验证过的离线小子集命令：
+
+```powershell
+& "D:\anaconda3\Scripts\conda.exe" run -n dlgpu python main.py --dataset CIFAR10 --model LeNet --epochs 1 --train-subset 64 --test-subset 32 --batch-size 32 --workers 0 --no-download
+& "D:\anaconda3\Scripts\conda.exe" run -n dlgpu python main.py --dataset MNIST --model LeNet --epochs 1 --train-subset 64 --test-subset 32 --batch-size 32 --workers 0 --no-download
+& "D:\anaconda3\Scripts\conda.exe" run -n dlgpu python main.py --dataset FashionMNIST --model LeNet --epochs 1 --train-subset 64 --test-subset 32 --batch-size 32 --workers 0 --no-download
+```
+
+这些命令会分别生成类似 `checkpoint\cifar10_lenet_train64_test32_best.pth` 的小实验 checkpoint。
 
 ## 8. 原项目 CIFAR-10 参考精度
 

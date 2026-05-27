@@ -6,8 +6,9 @@ This folder contains a local learning version of the open-source
 - Upstream project: https://github.com/kuangliu/pytorch-cifar
 - License: MIT, kept in `LICENSE`
 - Original focus: CIFAR-10 image classification with many CNN architectures
-- Local change: the training entrypoint is Windows-friendly and can run without a
-  network download by using the tiny `Digits` image dataset from scikit-learn.
+- Local change: the training entrypoint is Windows-friendly. It defaults to the
+  tiny built-in `Digits` dataset and can also run CIFAR-10, MNIST, and
+  FashionMNIST from manually downloaded offline files.
 
 ## Quick Start
 
@@ -45,10 +46,10 @@ Try a deeper model on the small local dataset:
 & "D:\anaconda3\Scripts\conda.exe" run -n dlgpu python main.py --dataset Digits --model ResNet18 --epochs 5 --lr 0.001
 ```
 
-Try the original CIFAR-10 workflow when the network is stable:
+Try the original CIFAR-10 workflow after the offline data is prepared:
 
 ```powershell
-& "D:\anaconda3\Scripts\conda.exe" run -n dlgpu python main.py --dataset CIFAR10 --model ResNet18 --optimizer sgd --lr 0.1 --epochs 20
+& "D:\anaconda3\Scripts\conda.exe" run -n dlgpu python main.py --dataset CIFAR10 --model ResNet18 --optimizer sgd --lr 0.1 --epochs 20 --no-download
 ```
 
 Show all options:
@@ -91,5 +92,18 @@ Change one thing at a time:
 
 The first attempt to download CIFAR-10 and MNIST failed in this environment
 because the downloaded archive did not pass checksum verification. The code keeps
-those datasets available, but the default `Digits` dataset avoids network
-problems so the PyTorch training loop is always runnable.
+those datasets available, and it now supports the local offline layouts that are
+easy to get after manual extraction:
+
+- `data/cifar-10-batches-py/`
+- `data/cifar-10-python/cifar-10-batches-py/`
+- `data/MNIST/raw/` with either hyphen filenames or the official dot filenames
+- `data/FashionMNIST/raw/`
+
+Verified offline smoke tests:
+
+```powershell
+& "D:\anaconda3\Scripts\conda.exe" run -n dlgpu python main.py --dataset CIFAR10 --model LeNet --epochs 1 --train-subset 64 --test-subset 32 --batch-size 32 --workers 0 --no-download
+& "D:\anaconda3\Scripts\conda.exe" run -n dlgpu python main.py --dataset MNIST --model LeNet --epochs 1 --train-subset 64 --test-subset 32 --batch-size 32 --workers 0 --no-download
+& "D:\anaconda3\Scripts\conda.exe" run -n dlgpu python main.py --dataset FashionMNIST --model LeNet --epochs 1 --train-subset 64 --test-subset 32 --batch-size 32 --workers 0 --no-download
+```

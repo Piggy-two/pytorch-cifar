@@ -121,6 +121,68 @@ class SklearnDigits(Dataset):
         return image, self.targets[index]
 
 
+class FlexibleMNIST(torchvision.datasets.MNIST):
+    """MNIST loader that also accepts common manual extraction filenames."""
+
+    raw_file_aliases = {
+        "train-images-idx3-ubyte": ("train-images.idx3-ubyte",),
+        "train-labels-idx1-ubyte": ("train-labels.idx1-ubyte",),
+        "t10k-images-idx3-ubyte": ("t10k-images.idx3-ubyte",),
+        "t10k-labels-idx1-ubyte": ("t10k-labels.idx1-ubyte",),
+    }
+
+    @property
+    def raw_folder(self) -> str:
+        return os.path.join(self.root, "MNIST", "raw")
+
+    @property
+    def processed_folder(self) -> str:
+        return os.path.join(self.root, "MNIST", "processed")
+
+    def _raw_file_path(self, filename: str) -> str:
+        expected_path = Path(self.raw_folder) / filename
+        if expected_path.exists():
+            return str(expected_path)
+
+        for alias in self.raw_file_aliases.get(filename, ()):
+            alias_path = Path(self.raw_folder) / alias
+            if alias_path.exists():
+                return str(alias_path)
+
+        return str(expected_path)
+
+    def _check_exists(self) -> bool:
+        return all(
+            Path(self._raw_file_path(Path(filename).with_suffix("").name)).exists()
+            for filename, _ in self.resources
+        )
+
+    def _load_data(self):
+        from torchvision.datasets.mnist import read_image_file, read_label_file
+
+        image_file = f"{'train' if self.train else 't10k'}-images-idx3-ubyte"
+        label_file = f"{'train' if self.train else 't10k'}-labels-idx1-ubyte"
+
+        data = read_image_file(self._raw_file_path(image_file))
+        targets = read_label_file(self._raw_file_path(label_file))
+        return data, targets
+
+
+def resolve_dataset_root(data_dir: str, dataset_name: str) -> str:
+    """Return a dataset root compatible with torchvision's expected layout."""
+    data_root = Path(data_dir)
+
+    if dataset_name == "CIFAR10":
+        standard_dir = data_root / torchvision.datasets.CIFAR10.base_folder
+        nested_parent = data_root / "cifar-10-python"
+        nested_dir = nested_parent / torchvision.datasets.CIFAR10.base_folder
+        if not standard_dir.exists() and nested_dir.exists():
+            print(f"    using manually extracted CIFAR-10 root: {nested_parent}")
+            return str(nested_parent)
+
+    return str(data_root)
+
+
 def build_dataloaders(args: argparse.Namespace):
     """Create training and test DataLoaders.
 
@@ -128,6 +190,7 @@ def build_dataloaders(args: argparse.Namespace):
     batches samples and optionally shuffles them for stochastic gradient descent.
     """
     print(f"==> Preparing {args.dataset} data..")
+    dataset_root = resolve_dataset_root(args.data_dir, args.dataset)
     if args.dataset == "CIFAR10":
         dataset_cls = torchvision.datasets.CIFAR10
         # Training transforms may include random augmentation so the model sees
@@ -175,9 +238,9 @@ def build_dataloaders(args: argparse.Namespace):
             ]
         )
     elif args.dataset == "MNIST":
-        dataset_cls = torchvision.datasets.MNIST
-        # Digits is already a tensor dataset in this local wrapper, so there is
-        # no ToTensor step here. Resize accepts tensors directly in torchvision.
+        dataset_cls = FlexibleMNIST
+        # MNIST is grayscale 28x28. Resize and repeat channels so it matches the
+        # CIFAR-style models expecting [3, 32, 32] images.
         transform_train = transforms.Compose(
             [
                 transforms.Resize(32),
@@ -218,10 +281,10 @@ def build_dataloaders(args: argparse.Namespace):
         testset = dataset_cls(train=False, transform=transform_test, seed=args.seed)
     else:
         trainset = dataset_cls(
-            root=args.data_dir, train=True, download=download, transform=transform_train
+            root=dataset_root, train=True, download=download, transform=transform_train
         )
         testset = dataset_cls(
-            root=args.data_dir, train=False, download=download, transform=transform_test
+            root=dataset_root, train=False, download=download, transform=transform_test
         )
 
     trainset = maybe_subset(trainset, args.train_subset, args.seed)
